@@ -1,32 +1,30 @@
 import { createContext, useState, useEffect, useContext } from 'react';
-import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('smart_home_user');
+    return saved ? JSON.parse(saved) : { id: 'usr_001', email: 'user@smarthome.local' };
+  });
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Cek sesi aktif saat ini
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+  const login = (email) => {
+    const u = { id: 'usr_001', email: email || 'user@smarthome.local' };
+    setUser(u);
+    localStorage.setItem('smart_home_user', JSON.stringify(u));
+  };
 
-    // Dengarkan perubahan status login/logout
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('smart_home_user');
+  };
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { apiClient } from '../lib/apiClient';
 
 export default function AccessHistory() {
   const [logs, setLogs] = useState([]);
@@ -7,33 +7,24 @@ export default function AccessHistory() {
   useEffect(() => {
     fetchLogs();
 
-    const channel = supabase
-      .channel('log_updates')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'access_logs' }, 
-        (payload) => {
-          setLogs(prev => [payload.new, ...prev].slice(0, 10));
-        }
-      )
-      .subscribe();
+    const interval = setInterval(() => {
+      fetchLogs();
+    }, 2000);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   const fetchLogs = async () => {
-    const { data } = await supabase
-      .from('access_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(10);
-      
-    if (data) setLogs(data);
+    const res = await apiClient.get('/access-logs');
+    if (res.success && res.data) {
+      setLogs(res.data.slice(0, 10));
+    }
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return date.toLocaleString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -49,36 +40,40 @@ export default function AccessHistory() {
       {logs.length === 0 ? (
         <div style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 1rem', opacity: 0.5 }}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-          <p>No telemetry data available.</p>
+          <p>Belum ada data log aktivitas.</p>
         </div>
       ) : (
         <div className="table-responsive">
           <table className="history-table">
             <thead>
               <tr>
-                <th>TIMESTAMP</th>
-                <th>OPERATOR</th>
-                <th>EVENT</th>
+                <th>WAKTU</th>
+                <th>CARD / OPERATOR</th>
+                <th>METODE</th>
+                <th>STATUS</th>
               </tr>
             </thead>
             <tbody>
               {logs.map((log, i) => (
-                <tr key={log.id} style={{ animation: `fadeIn 0.5s ease-out ${i * 0.05}s forwards`, opacity: 0 }}>
-                  <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                <tr key={log.id || i} style={{ animation: `fadeIn 0.5s ease-out ${i * 0.05}s forwards`, opacity: 0 }}>
+                  <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.8rem' }}>
                     {formatDate(log.created_at)}
                   </td>
-                  <td>{log.user_email.split('@')[0]}</td>
+                  <td style={{ fontWeight: 700 }}>{log.card_uid}</td>
                   <td>
-                    <span className={`log-action ${log.action === 'UNLOCKED' ? 'unlocked' : 'locked'}`}>
-                      {log.action === 'UNLOCKED' ? (
+                    <span className="badge-normal" style={{ fontSize: '0.75rem' }}>{log.method || 'RFID'}</span>
+                  </td>
+                  <td>
+                    <span className={`log-action ${log.status === 'GRANTED' ? 'unlocked' : 'locked'}`}>
+                      {log.status === 'GRANTED' ? (
                         <>
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
-                          UNLOCKED
+                          GRANTED
                         </>
                       ) : (
                         <>
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                          LOCKED
+                          DENIED
                         </>
                       )}
                     </span>

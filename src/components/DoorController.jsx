@@ -1,120 +1,145 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
-
-const DEVICE_ID = 'PINTU-001';
+import { apiClient } from '../lib/apiClient';
 
 export default function DoorController({ userEmail }) {
-  const [doorStatus, setDoorStatus] = useState('IDLE');
+  const [doorData, setDoorData] = useState({ device_id: 'DOOR-001', is_locked: true });
   const [loading, setLoading] = useState(false);
+  const [actionType, setActionType] = useState(null); // 'UNLOCK' or 'LOCK'
 
   useEffect(() => {
-    fetchDoorStatus();
+    fetchDoor();
 
-    // Realtime listener untuk perubahan status pintu
-    const channel = supabase
-      .channel('public:devices')
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'devices', 
-        filter: `device_id=eq.${DEVICE_ID}` 
-      }, 
-        (payload) => {
-          setDoorStatus(payload.new.door_command);
-        }
-      )
-      .subscribe();
+    const interval = setInterval(() => {
+      fetchDoor();
+    }, 2000);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchDoorStatus = async () => {
-    const { data, error } = await supabase
-      .from('devices')
-      .select('door_command')
-      .eq('device_id', DEVICE_ID)
-      .single();
-
-    if (data) setDoorStatus(data.door_command);
-    if (error) console.error('Fetch status error:', error);
+  const fetchDoor = async () => {
+    const res = await apiClient.get('/doors');
+    if (res.success && res.data) {
+      setDoorData(res.data);
+    }
   };
 
-  const controlDoor = async (command) => {
+  const controlDoor = async (targetLocked) => {
     setLoading(true);
-    const { error } = await supabase
-      .from('devices')
-      .update({ door_command: command })
-      .eq('device_id', DEVICE_ID);
+    setActionType(targetLocked ? 'LOCK' : 'UNLOCK');
 
-    if (!error) {
-      setDoorStatus(command);
+    setDoorData(prev => ({ ...prev, is_locked: targetLocked }));
 
-      // Log akses
-      await supabase.from('access_logs').insert([
-        { user_email: userEmail, action: command === 'OPEN' ? 'UNLOCKED' : 'LOCKED' }
-      ]);
-    } else {
-      console.error('Control door error:', error);
-      alert('Gagal mengirim perintah!');
+    const res = await apiClient.post('/doors/toggle', {
+      is_locked: targetLocked,
+      card_uid: 'WEB_APP',
+      method: 'WEB_APP'
+    });
+
+    if (!res.success) {
+      alert('Gagal mengirim perintah ke pintu!');
+      fetchDoor();
     }
     setLoading(false);
+    setActionType(null);
   };
 
-  const isOpen = doorStatus === 'OPEN';
-  const isClosed = doorStatus === 'CLOSE';
+  const isLocked = doorData.is_locked;
+  const isOpen = !isLocked;
 
   return (
-    <div className="glass-panel animate-fade-in delay-100">
-      <div className="door-status-wrapper">
-        <h3 style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: '2px' }}>
-          Realtime Status
-        </h3>
-        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.8rem', opacity: 0.7 }}>
-          {DEVICE_ID}
-        </p>
+    <div className="door-card animate-fade-in delay-100">
+      <div className="door-card-inner">
         
-        <div className={`status-indicator ${isOpen ? 'unlocked' : isClosed ? 'locked' : 'idle'}`}>
-          {isOpen ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
-          ) : isClosed ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-          )}
-        </div>
-        
-        <div className={`status-text ${isOpen ? 'unlocked' : isClosed ? 'locked' : 'idle'}`}>
-          {isOpen ? 'PINTU TERBUKA' : isClosed ? 'PINTU TERKUNCI' : 'IDLE'}
+        {/* Header */}
+        <div className="door-card-header">
+          <div className="door-header-left">
+            <div className="device-icon-badge">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="door-device-name">Smart Door Lock</h3>
+              <span className="door-device-id">{doorData.device_id}</span>
+            </div>
+          </div>
+          <div className={`door-live-badge ${isOpen ? 'live-open' : 'live-closed'}`}>
+            <div className="live-dot"></div>
+            LIVE
+          </div>
         </div>
 
-        {/* Dua tombol terpisah: BUKA dan KUNCI */}
-        <div style={{ display: 'flex', gap: '1rem', width: '100%', maxWidth: '350px' }}>
+        {/* Status Ring */}
+        <div className="door-status-section">
+          <div className={`door-ring ${isOpen ? 'ring-open' : 'ring-closed'}`}>
+            <div className="door-ring-inner">
+              {isOpen ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              )}
+            </div>
+          </div>
+          
+          <div className={`door-status-label ${isOpen ? 'label-open' : 'label-closed'}`}>
+            {isOpen ? 'TERBUKA' : 'TERKUNCI'}
+          </div>
+          <p className="door-status-subtitle">
+            {isOpen ? 'Pintu dalam keadaan tidak terkunci' : 'Pintu dalam keadaan aman terkunci'}
+          </p>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="door-actions">
           <button 
-            onClick={() => controlDoor('OPEN')}
+            onClick={() => controlDoor(false)}
             disabled={loading || isOpen}
-            className="btn btn-lock action-unlocked"
-            style={{ flex: 1, fontSize: '1rem', padding: '1rem 1.5rem' }}
+            className={`door-btn door-btn-open ${isOpen ? 'door-btn-active' : ''}`}
           >
-            {loading ? (
-              <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto' }}><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-            ) : (
-              'BUKA PINTU'
-            )}
+            <div className="door-btn-icon">
+              {loading && actionType === 'UNLOCK' ? (
+                <div className="btn-spinner"></div>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                </svg>
+              )}
+            </div>
+            <span className="door-btn-label">BUKA PINTU</span>
           </button>
+          
           <button 
-            onClick={() => controlDoor('CLOSE')}
-            disabled={loading || isClosed}
-            className="btn btn-lock action-locked"
-            style={{ flex: 1, fontSize: '1rem', padding: '1rem 1.5rem' }}
+            onClick={() => controlDoor(true)}
+            disabled={loading || isLocked}
+            className={`door-btn door-btn-close ${isLocked ? 'door-btn-active' : ''}`}
           >
-            {loading ? (
-              <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto' }}><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-            ) : (
-              'KUNCI PINTU'
-            )}
+            <div className="door-btn-icon">
+              {loading && actionType === 'LOCK' ? (
+                <div className="btn-spinner"></div>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              )}
+            </div>
+            <span className="door-btn-label">KUNCI PINTU</span>
           </button>
+        </div>
+
+        {/* Footer */}
+        <div className="door-card-footer">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+          </svg>
+          Secured by Smart Door Lock System
         </div>
       </div>
     </div>
