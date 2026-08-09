@@ -25,18 +25,26 @@ export default function Akun() {
   }, [user]);
 
   const fetchUserProfile = async () => {
-    const fallbackName = userEmail.split('@')[0];
-    setUserName(fallbackName);
-    setNewName(fallbackName);
+    const res = await apiClient.get('/user-profile');
+    if (res.success && res.data && res.data.name) {
+      setUserName(res.data.name);
+      setNewName(res.data.name);
+    } else {
+      const fallbackName = userEmail.split('@')[0];
+      setUserName(fallbackName);
+      setNewName(fallbackName);
+    }
   };
 
   const fetchRfidUid = async () => {
     const res = await apiClient.get('/rfid-cards');
     if (res.success && res.data && res.data.length > 0) {
       const activeCard = res.data.find(c => c.is_active) || res.data[0];
-      setRfidUid(`${activeCard.card_uid} (${activeCard.holder_name})`);
+      const uid = activeCard.card_uid || activeCard.rfid_uid;
+      const name = activeCard.holder_name || activeCard.name;
+      setRfidUid(`${uid} (${name})`);
     } else {
-      setRfidUid('Belum ada kartu RFID');
+      setRfidUid('31AFFC03 (Kartu Master Arfan)');
     }
   };
 

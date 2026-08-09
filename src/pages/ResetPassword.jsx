@@ -35,11 +35,6 @@ export default function ResetPassword() {
     setLoading(false);
   };
 
-  // Jangan render apa-apa sebelum cek selesai
-  if (!isAuthorized) {
-    return <div style={{ minHeight: '100vh', background: 'var(--bg-main)' }} />;
-  }
-
   return (
     <div className="auth-container">
 

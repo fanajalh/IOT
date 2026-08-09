@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '../lib/apiClient';
-import { ArrowLeft, DotsThreeVertical, LockKeyOpen, LockKey, DoorOpen, Door as DoorClosed } from '@phosphor-icons/react';
+import { useLamps } from '../context/LampContext';
+import { ArrowLeft, DotsThreeVertical, LockKeyOpen, LockKey, DoorOpen, Door as DoorClosed, CreditCard, Globe, ClockCounterClockwise } from '@phosphor-icons/react';
 import { Link } from 'react-router-dom';
 
 export default function Pintu() {
@@ -8,6 +9,7 @@ export default function Pintu() {
   const [deviceId, setDeviceId] = useState('DOOR-001');
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const { isNightMode, nightStayOnLamps } = useLamps();
 
   useEffect(() => {
     fetchDoorStatus();
@@ -22,17 +24,25 @@ export default function Pintu() {
   }, []);
 
   const fetchDoorStatus = async () => {
-    const res = await apiClient.get('/doors');
-    if (res.success && res.data) {
-      setIsLocked(!!res.data.is_locked);
-      setDeviceId(res.data.device_id || 'DOOR-001');
+    try {
+      const res = await apiClient.get('/doors');
+      if (res.success && res.data) {
+        setIsLocked(!!res.data.is_locked);
+        setDeviceId(res.data.device_id || 'DOOR-001');
+      }
+    } catch (err) {
+      console.error('fetchDoorStatus error:', err);
     }
   };
 
   const fetchLogs = async () => {
-    const res = await apiClient.get('/access-logs');
-    if (res.success && res.data) {
-      setLogs(res.data.slice(0, 6));
+    try {
+      const res = await apiClient.get('/access-logs');
+      if (res.success && res.data) {
+        setLogs(res.data.slice(0, 10));
+      }
+    } catch (err) {
+      console.error('fetchLogs error:', err);
     }
   };
 
@@ -46,7 +56,9 @@ export default function Pintu() {
     await apiClient.post('/doors/toggle', {
       is_locked: targetLocked,
       card_uid: 'WEB_APP',
-      method: 'WEB_APP'
+      method: 'WEB_APP',
+      night_mode: isNightMode,
+      stay_on_lamps: nightStayOnLamps
     });
     
     fetchLogs();
@@ -58,7 +70,23 @@ export default function Pintu() {
   const formatTime = (isoString) => {
     if (!isoString) return '';
     const date = new Date(isoString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+
+    if (diffMin < 1) return 'Baru saja';
+    if (diffMin < 60) return `${diffMin} mnt lalu`;
+    if (diffHours < 24) return `${diffHours} jam lalu`;
+
+    return date.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getMethodInfo = (method) => {
+    if (method === 'RFID' || method === 'rfid') {
+      return { label: 'Kartu RFID', icon: <CreditCard size={14} weight="fill" />, color: '#805AD5', bg: 'rgba(128, 90, 213, 0.12)' };
+    }
+    return { label: 'Web App', icon: <Globe size={14} weight="fill" />, color: '#3182CE', bg: 'rgba(49, 130, 206, 0.12)' };
   };
 
   return (
@@ -119,36 +147,75 @@ export default function Pintu() {
         </div>
 
         {/* Log Pintu */}
-        <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem' }}>LOG AKSES PINTU</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+            <ClockCounterClockwise size={18} weight="bold" />
+            LOG AKSES PINTU
+          </h3>
+          {logs.length > 0 && (
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#38A169', background: 'rgba(56,161,105,0.12)', padding: '3px 10px', borderRadius: '12px' }}>
+              LIVE • {logs.length} entri
+            </span>
+          )}
+        </div>
+
         <div className="card" style={{ padding: '0.5rem 1rem' }}>
-          {logs.map((log, index) => (
-            <div key={log.id} style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              padding: '1.25rem 0',
-              borderBottom: index !== logs.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div className="flex-center inset-box-circle" style={{ 
-                  width: 44, 
-                  height: 44, 
-                  color: log.status === 'GRANTED' ? '#38A169' : '#E53E3E'
-                }}>
-                  {log.status === 'GRANTED' ? <LockKeyOpen size={20} weight="fill" /> : <LockKey size={20} weight="fill" />}
+          {logs.map((log, index) => {
+            const methodInfo = getMethodInfo(log.method);
+            return (
+              <div key={log.id || index} style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                padding: '1.25rem 0',
+                borderBottom: index !== logs.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div className="flex-center inset-box-circle" style={{ 
+                    width: 44, 
+                    height: 44, 
+                    color: log.status === 'GRANTED' ? '#38A169' : '#E53E3E'
+                  }}>
+                    {log.status === 'GRANTED' ? <LockKeyOpen size={20} weight="fill" /> : <LockKey size={20} weight="fill" />}
+                  </div>
+                  <div>
+                    <div className="font-bold" style={{ marginBottom: '4px' }}>
+                      {log.card_uid === 'WEB_APP' ? 'Kontrol Web App' : `UID: ${log.card_uid}`}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      {/* Method badge */}
+                      <span style={{ 
+                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                        fontSize: '0.7rem', fontWeight: 700, 
+                        color: methodInfo.color, background: methodInfo.bg,
+                        padding: '2px 8px', borderRadius: '8px'
+                      }}>
+                        {methodInfo.icon} {methodInfo.label}
+                      </span>
+                      {/* Status badge */}
+                      <span style={{ 
+                        fontSize: '0.7rem', fontWeight: 700, 
+                        color: log.status === 'GRANTED' ? '#38A169' : '#E53E3E',
+                        background: log.status === 'GRANTED' ? 'rgba(56,161,105,0.12)' : 'rgba(229,62,62,0.12)',
+                        padding: '2px 8px', borderRadius: '8px'
+                      }}>
+                        {log.status === 'GRANTED' ? '✓ Diterima' : '✗ Ditolak'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-bold">UID: {log.card_uid}</div>
-                  <div className="text-sub">Metode: {log.method || 'RFID'} • Status: {log.status}</div>
+                <div className="text-sub" style={{ fontSize: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  {formatTime(log.created_at)}
                 </div>
               </div>
-              <div className="text-sub" style={{ fontSize: '0.8rem' }}>
-                {formatTime(log.created_at)}
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {logs.length === 0 && (
-            <div className="text-center p-4 text-sub">Tidak ada log pintu.</div>
+            <div className="text-center p-4 text-sub" style={{ padding: '2rem 0' }}>
+              <ClockCounterClockwise size={40} weight="light" color="#CBD5E0" style={{ marginBottom: '0.5rem' }} />
+              <div>Belum ada log akses pintu.</div>
+              <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>Coba tekan tombol Buka / Kunci Pintu.</div>
+            </div>
           )}
         </div>
 

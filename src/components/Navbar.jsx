@@ -14,22 +14,11 @@ export default function Navbar({ user }) {
     <nav className="navbar animate-fade-in">
       {/* Brand */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <div className="brand-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#brandGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <defs>
-              <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#a78bfa" />
-                <stop offset="100%" stopColor="#06b6d4" />
-              </linearGradient>
-            </defs>
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-            <path d="m9 12 2 2 4-4" />
-          </svg>
-        </div>
+        <img src="/clef-logo.svg" alt="IOT CLEF Logo" style={{ width: 32, height: 32 }} />
         <h1 className="navbar-brand">
-          krea<span className="brand-accent">DV</span>
+          IOT <span className="brand-accent" style={{ color: '#FF9F1C' }}>CLEF</span>
         </h1>
-        <span className="nav-badge">SMART LOCK</span>
+        <span className="nav-badge" style={{ background: 'rgba(255,159,28,0.15)', color: '#FF9F1C' }}>SMART HOME</span>
       </div>
       
       {/* User Info & Actions */}

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useLamps } from '../context/LampContext';
-import { ArrowLeft, Clock, Power, Gear, Lightbulb } from '@phosphor-icons/react';
+import { ArrowLeft, Clock, Power, Gear, Lightbulb, Moon, ShieldCheck } from '@phosphor-icons/react';
 import { Link } from 'react-router-dom';
 
 export default function Lampu() {
-  const { lamps, localCounters, toggleLamp, updateBrightness, turnOffAllLamps, formatDuration } = useLamps();
+  const { lamps, localCounters, toggleLamp, updateBrightness, turnOffAllLamps, formatDuration, isNightMode, toggleNightMode, nightStayOnLamps, toggleNightStayOnLamp } = useLamps();
   const [selectedLampId, setSelectedLampId] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -21,7 +21,7 @@ export default function Lampu() {
   if (!selectedLampId) {
     return (
       <div style={{ padding: '2rem', minHeight: '100vh', background: '#f0f2f5' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem' }}>
           <Link to="/home" style={{ 
             color: '#4A5568', textDecoration: 'none', background: '#f0f2f5', 
             width: '45px', height: '45px', borderRadius: '50%', 
@@ -33,13 +33,108 @@ export default function Lampu() {
           <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginLeft: '1.5rem', color: '#2D3748', margin: 0 }}>Daftar Lampu</h2>
         </div>
 
+        {/* CARD MODE MALAM (NIGHT SECURITY MODE) */}
+        <div style={{ 
+          background: '#f0f2f5', borderRadius: '24px', padding: '1.5rem', marginBottom: '2rem',
+          boxShadow: isNightMode 
+            ? 'inset 5px 5px 10px #d1d9e6, inset -5px -5px 10px #ffffff, 0 10px 20px rgba(128, 90, 213, 0.15)' 
+            : '8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff',
+          border: isNightMode ? '2px solid rgba(128, 90, 213, 0.4)' : '2px solid transparent',
+          transition: 'all 0.3s ease'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isNightMode ? '1.2rem' : '0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+              <div style={{ 
+                width: 50, height: 50, borderRadius: '16px',
+                display: 'flex', justifyContent: 'center', alignItems: 'center',
+                background: isNightMode ? '#805AD5' : '#f0f2f5',
+                boxShadow: isNightMode 
+                  ? '0 8px 15px rgba(128, 90, 213, 0.4)' 
+                  : 'inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff'
+              }}>
+                <Moon size={26} weight="fill" color={isNightMode ? "#fff" : "#A0AEC0"} />
+              </div>
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#2D3748', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  Mode Malam (Otomatisasi Pintu ↔ Lampu)
+                  {isNightMode && <ShieldCheck size={18} color="#805AD5" weight="fill" />}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#718096', fontWeight: 600, marginTop: '2px' }}>
+                  {isNightMode 
+                    ? '🌙 Kustomisasi lampu yang TETAP ON saat pintu dikunci di bawah ini'
+                    : '☀️ Mode Siang: Semua lampu mati saat pintu dikunci'}
+                </div>
+              </div>
+            </div>
+            <div 
+              onClick={toggleNightMode}
+              style={{
+                width: '52px', height: '28px', borderRadius: '14px', flexShrink: 0,
+                background: isNightMode ? '#805AD5' : '#d1d5db',
+                boxShadow: isNightMode 
+                  ? 'inset 2px 2px 4px rgba(0,0,0,0.15)' 
+                  : 'inset 3px 3px 6px #b8bec7, inset -3px -3px 6px #ffffff',
+                position: 'relative', cursor: 'pointer', transition: 'all 0.3s ease'
+              }}
+            >
+              <div style={{
+                width: '22px', height: '22px', borderRadius: '50%',
+                background: '#fff', position: 'absolute', top: '3px',
+                left: isNightMode ? '27px' : '3px',
+                boxShadow: '2px 2px 5px rgba(0,0,0,0.2)',
+                transition: 'left 0.3s ease'
+              }}></div>
+            </div>
+          </div>
+
+          {/* CHECKLIST KUSTOMISASI LAMPU TETAP ON */}
+          {isNightMode && (
+            <div style={{ 
+              background: 'rgba(128, 90, 213, 0.06)', borderRadius: '16px', padding: '1rem 1.2rem',
+              border: '1px solid rgba(128, 90, 213, 0.2)'
+            }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#553C9A', marginBottom: '0.8rem' }}>
+                📌 Pilih Lampu yang TETAP MENYALA saat Pintu Dikunci:
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.8rem' }}>
+                {lamps.map(lamp => {
+                  const isChecked = nightStayOnLamps.includes(lamp.key);
+                  return (
+                    <div 
+                      key={lamp.key} 
+                      onClick={() => toggleNightStayOnLamp(lamp.key)}
+                      style={{ 
+                        display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+                        fontSize: '0.85rem', fontWeight: 700,
+                        color: isChecked ? '#553C9A' : '#718096',
+                        padding: '6px 12px', borderRadius: '12px',
+                        background: isChecked ? 'rgba(128, 90, 213, 0.15)' : '#f0f2f5',
+                        transition: 'all 0.2s ease',
+                        userSelect: 'none'
+                      }}
+                    >
+                      <input 
+                        type="checkbox" 
+                        checked={isChecked} 
+                        onChange={() => {}} 
+                        style={{ accentColor: '#805AD5', width: 16, height: 16, cursor: 'pointer', pointerEvents: 'none' }} 
+                      />
+                      {lamp.name}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '2rem' }}>
           {lamps.map((lamp) => (
             <div 
               key={lamp.id} 
               onClick={() => setSelectedLampId(lamp.id)}
               style={{ 
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1.2rem',
+                cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '1rem',
                 padding: '1.5rem', background: '#f0f2f5', borderRadius: '24px',
                 boxShadow: lamp.status 
                   ? 'inset 5px 5px 10px #d1d9e6, inset -5px -5px 10px #ffffff, 0 10px 20px rgba(255, 159, 28, 0.15)' 
@@ -48,47 +143,70 @@ export default function Lampu() {
                 transition: 'all 0.3s ease',
               }}
             >
-              <div style={{ 
-                width: 55, height: 55, borderRadius: '18px',
-                display: 'flex', justifyContent: 'center', alignItems: 'center',
-                background: lamp.status ? '#FF9F1C' : '#f0f2f5',
-                boxShadow: lamp.status 
-                  ? '0 8px 15px rgba(255, 159, 28, 0.4)' 
-                  : 'inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff'
-              }}>
-                <Lightbulb size={28} weight={lamp.status ? "fill" : "regular"} color={lamp.status ? "#fff" : "#A0AEC0"} style={{ transform: 'rotate(180deg)' }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#2D3748', marginBottom: '4px' }}>{lamp.name}</div>
-                <div style={{ fontSize: '0.85rem', color: lamp.status ? '#FF9F1C' : '#A0AEC0', fontWeight: 700 }}>
-                  {lamp.status ? 'Menyala' : 'Mati'} • Relay
-                </div>
-                {lamp.status && (
-                  <div style={{ fontSize: '0.75rem', color: '#A0AEC0', fontWeight: 600, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Clock size={14} weight="bold" color="#FF9F1C" />
-                    {formatDuration(localCounters[lamp.id] || 0)}
-                  </div>
-                )}
-              </div>
-              {/* Toggle Switch */}
-              <div 
-                onClick={(e) => { e.stopPropagation(); toggleLamp(lamp.id, lamp.status); }}
-                style={{
-                  width: '52px', height: '28px', borderRadius: '14px', flexShrink: 0,
-                  background: lamp.status ? '#FF9F1C' : '#d1d5db',
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', width: '100%' }}>
+                <div style={{ 
+                  width: 55, height: 55, borderRadius: '18px',
+                  display: 'flex', justifyContent: 'center', alignItems: 'center',
+                  background: lamp.status ? '#FF9F1C' : '#f0f2f5',
                   boxShadow: lamp.status 
-                    ? 'inset 2px 2px 4px rgba(0,0,0,0.15)' 
-                    : 'inset 3px 3px 6px #b8bec7, inset -3px -3px 6px #ffffff',
-                  position: 'relative', cursor: 'pointer', transition: 'all 0.3s ease'
+                    ? '0 8px 15px rgba(255, 159, 28, 0.4)' 
+                    : 'inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff'
+                }}>
+                  <Lightbulb size={28} weight={lamp.status ? "fill" : "regular"} color={lamp.status ? "#fff" : "#A0AEC0"} style={{ transform: 'rotate(180deg)' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#2D3748', marginBottom: '4px' }}>{lamp.name}</div>
+                  <div style={{ fontSize: '0.85rem', color: lamp.status ? '#FF9F1C' : '#A0AEC0', fontWeight: 700 }}>
+                    {lamp.status ? `Menyala (${lamp.brightness ?? 100}%)` : 'Mati'}
+                  </div>
+                  {lamp.status && (
+                    <div style={{ fontSize: '0.75rem', color: '#A0AEC0', fontWeight: 600, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Clock size={14} weight="bold" color="#FF9F1C" />
+                      {formatDuration(localCounters[lamp.id] || 0)}
+                    </div>
+                  )}
+                </div>
+                {/* Toggle Switch */}
+                <div 
+                  onClick={(e) => { e.stopPropagation(); toggleLamp(lamp.id, lamp.status); }}
+                  style={{
+                    width: '52px', height: '28px', borderRadius: '14px', flexShrink: 0,
+                    background: lamp.status ? '#FF9F1C' : '#d1d5db',
+                    boxShadow: lamp.status 
+                      ? 'inset 2px 2px 4px rgba(0,0,0,0.15)' 
+                      : 'inset 3px 3px 6px #b8bec7, inset -3px -3px 6px #ffffff',
+                    position: 'relative', cursor: 'pointer', transition: 'all 0.3s ease'
+                  }}
+                >
+                  <div style={{
+                    width: '22px', height: '22px', borderRadius: '50%',
+                    background: '#fff', position: 'absolute', top: '3px',
+                    left: lamp.status ? '27px' : '3px',
+                    boxShadow: '2px 2px 5px rgba(0,0,0,0.2)',
+                    transition: 'left 0.3s ease'
+                  }}></div>
+                </div>
+              </div>
+
+              {/* SLIDER KECERAHAN (DIMMER 0% - 100%) */}
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                style={{ 
+                  background: 'rgba(255, 159, 28, 0.08)', borderRadius: '14px', padding: '0.6rem 1rem',
+                  display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px'
                 }}
               >
-                <div style={{
-                  width: '22px', height: '22px', borderRadius: '50%',
-                  background: '#fff', position: 'absolute', top: '3px',
-                  left: lamp.status ? '27px' : '3px',
-                  boxShadow: '2px 2px 5px rgba(0,0,0,0.2)',
-                  transition: 'left 0.3s ease'
-                }}></div>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#FF9F1C', minWidth: '60px' }}>
+                  🔆 {lamp.brightness ?? 100}%
+                </span>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={lamp.brightness ?? (lamp.status ? 100 : 0)}
+                  onChange={(e) => updateBrightness(lamp.id, e.target.value)}
+                  style={{ flex: 1, accentColor: '#FF9F1C', cursor: 'pointer' }}
+                />
               </div>
             </div>
           ))}

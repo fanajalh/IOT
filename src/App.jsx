@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import Pintu from './pages/Pintu';
 import Lampu from './pages/Lampu';
 import Akun from './pages/Akun';
+import Notifikasi from './pages/Notifikasi';
 import ForgotPassword from './pages/ForgotPassword';
 import Layout from './components/Layout';
 import SplashScreen from './components/SplashScreen';
@@ -39,6 +40,7 @@ function App() {
         <Route path="/pintu" element={<ProtectedRoute><Pintu /></ProtectedRoute>} />
         <Route path="/lampu" element={<ProtectedRoute><Lampu /></ProtectedRoute>} />
         <Route path="/akun" element={<ProtectedRoute><Akun /></ProtectedRoute>} />
+        <Route path="/notifikasi" element={<ProtectedRoute><Notifikasi /></ProtectedRoute>} />
       </Route>
       
       {/* Redirects */}

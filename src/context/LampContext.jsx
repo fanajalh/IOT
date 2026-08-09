@@ -48,10 +48,10 @@ export function LampProvider({ children }) {
     if (res.success && res.data) {
       const data = res.data;
       setLamps([
-        { id: 1, key: 'lamp1_on', name: 'Lampu 1 (Ruang Tamu)', status: !!data.lamp1_on },
-        { id: 2, key: 'lamp2_on', name: 'Lampu 2 (Kamar Utama)', status: !!data.lamp2_on },
-        { id: 3, key: 'lamp3_on', name: 'Lampu 3 (Dapur)', status: !!data.lamp3_on },
-        { id: 4, key: 'lamp4_on', name: 'Lampu 4 (Teras)', status: !!data.lamp4_on },
+        { id: 1, key: 'lamp1_on', name: 'Lampu 1 (Ruang Tamu)', status: !!data.lamp1_on, brightness: data.lamp1_brightness ?? 100 },
+        { id: 2, key: 'lamp2_on', name: 'Lampu 2 (Kamar Utama)', status: !!data.lamp2_on, brightness: data.lamp2_brightness ?? 100 },
+        { id: 3, key: 'lamp3_on', name: 'Lampu 3 (Dapur)', status: !!data.lamp3_on, brightness: data.lamp3_brightness ?? 100 },
+        { id: 4, key: 'lamp4_on', name: 'Lampu 4 (Teras)', status: !!data.lamp4_on, brightness: data.lamp4_brightness ?? 100 },
       ]);
     }
   };
@@ -71,6 +71,19 @@ export function LampProvider({ children }) {
     if (!res.success) {
       setLamps(prev => prev.map(lamp => lamp.id === id ? { ...lamp, status: currentStatus } : lamp));
     }
+  };
+
+  const updateBrightness = async (id, brightnessValue) => {
+    const targetLamp = lamps.find(l => l.id === id);
+    if (!targetLamp) return;
+    const bVal = Math.max(0, Math.min(100, parseInt(brightnessValue) || 0));
+
+    setLamps(prev => prev.map(lamp => lamp.id === id ? { ...lamp, brightness: bVal, status: bVal > 0 } : lamp));
+
+    await apiClient.post('/lamps/brightness', {
+      lampKey: targetLamp.key,
+      brightness: bVal
+    });
   };
 
   const turnOffAllLamps = async () => {
@@ -113,11 +126,58 @@ export function LampProvider({ children }) {
     return `${s} dtk`;
   };
 
+  const [isNightMode, setIsNightMode] = useState(true);
+  const [nightStayOnLamps, setNightStayOnLamps] = useState(['lamp4_on']);
+
+  // Load night mode config from server on mount
+  useEffect(() => {
+    const loadNightConfig = async () => {
+      const res = await apiClient.get('/night-mode-config');
+      if (res.success && res.data) {
+        setIsNightMode(!!res.data.night_mode_enabled);
+        const stayOn = [];
+        if (res.data.night_lamp1_stay_on) stayOn.push('lamp1_on');
+        if (res.data.night_lamp2_stay_on) stayOn.push('lamp2_on');
+        if (res.data.night_lamp3_stay_on) stayOn.push('lamp3_on');
+        if (res.data.night_lamp4_stay_on) stayOn.push('lamp4_on');
+        setNightStayOnLamps(stayOn);
+      }
+    };
+    loadNightConfig();
+  }, []);
+
+  const saveNightConfigToDB = async (enabled, stayOnArr) => {
+    await apiClient.post('/night-mode-config', {
+      night_mode_enabled: enabled,
+      stay_on_lamps: stayOnArr
+    });
+  };
+
+  const toggleNightMode = () => {
+    setIsNightMode(prev => {
+      const next = !prev;
+      saveNightConfigToDB(next, nightStayOnLamps);
+      return next;
+    });
+  };
+
+  const toggleNightStayOnLamp = (lampKey) => {
+    setNightStayOnLamps(prev => {
+      const next = prev.includes(lampKey)
+        ? prev.filter(k => k !== lampKey)
+        : [...prev, lampKey];
+      saveNightConfigToDB(isNightMode, next);
+      return next;
+    });
+  };
+
   return (
     <LampContext.Provider value={{
       lamps, localCounters, fetchLamps,
-      toggleLamp, turnOffAllLamps,
-      cascadeTurnOnAll, cascadeTurnOffAll, formatDuration
+      toggleLamp, updateBrightness, turnOffAllLamps,
+      cascadeTurnOnAll, cascadeTurnOffAll, formatDuration,
+      isNightMode, toggleNightMode,
+      nightStayOnLamps, toggleNightStayOnLamp
     }}>
       {children}
     </LampContext.Provider>
@@ -125,5 +185,3 @@ export function LampProvider({ children }) {
 }
 
 export const useLamps = () => useContext(LampContext);
-
-

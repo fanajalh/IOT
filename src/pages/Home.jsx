@@ -56,7 +56,12 @@ export default function Home() {
   };
 
   const fetchUserProfile = async () => {
-    setUserName(user?.email?.split('@')[0] || 'User');
+    const res = await apiClient.get('/user-profile');
+    if (res.success && res.data && res.data.name) {
+      setUserName(res.data.name);
+    } else {
+      setUserName(user?.email?.split('@')[0] || 'Arfan');
+    }
   };
 
   const isOpen = doorStatus === 'TERBUKA';
@@ -120,14 +125,14 @@ export default function Home() {
         }}>
           <List size={24} weight="bold" />
         </div>
-        <div style={{ 
+        <Link to="/notifikasi" style={{ 
           position: 'relative', width: '45px', height: '45px', borderRadius: '50%', background: '#f0f2f5',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '5px 5px 10px #d1d9e6, -5px -5px 10px #ffffff', color: '#4A5568'
+          boxShadow: '5px 5px 10px #d1d9e6, -5px -5px 10px #ffffff', color: '#4A5568', textDecoration: 'none'
         }}>
           <Bell size={24} weight="bold" />
           <div style={{ position: 'absolute', top: '12px', right: '12px', width: '8px', height: '8px', background: '#FF9F1C', borderRadius: '50%', boxShadow: '0 0 5px rgba(255,159,28,0.5)' }}></div>
-        </div>
+        </Link>
       </div>
 
       {/* HEADER GREETING */}
@@ -135,7 +140,7 @@ export default function Home() {
         <h1 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '0.5rem', color: '#2D3748', letterSpacing: '-0.5px' }}>
           Halo, <span style={{ color: '#FF9F1C' }}>{userName || 'Memuat...'}</span> 👋
         </h1>
-        <p style={{ fontSize: '1.1rem', color: '#A0AEC0', margin: 0, fontWeight: 600 }}>Selamat datang di Smart Home Anda.</p>
+        <p style={{ fontSize: '1.1rem', color: '#A0AEC0', margin: 0, fontWeight: 600 }}>Selamat datang di IOT CLEF.</p>
       </div>
 
       {/* STATUS SISTEM CARD */}
