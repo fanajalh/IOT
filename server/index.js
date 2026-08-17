@@ -46,23 +46,40 @@ wss.on('connection', (ws) => {
           [card_uid || 'UNKNOWN']
         );
 
-        // 3. Otomatisasi mode malam lampu jika pintu dikunci
+        // 3. Otomatisasi Pintu <-> Lampu (Mode Malam & Buka Pintu)
+        let lampUpdateData = null;
         if (targetLocked) {
+          // PINTU DIKUNCI -> Terapkan Mode Malam
           const lampCfgRes = await pool.query("SELECT night_mode_enabled, night_lamp1_stay_on, night_lamp2_stay_on, night_lamp3_stay_on, night_lamp4_stay_on FROM public.lamps WHERE device_id = 'LAMPU-001' LIMIT 1");
           if (lampCfgRes.rows.length > 0 && lampCfgRes.rows[0].night_mode_enabled) {
             const cfg = lampCfgRes.rows[0];
-            await pool.query(
-              "UPDATE public.lamps SET lamp1_on = $1, lamp2_on = $2, lamp3_on = $3, lamp4_on = $4, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'LAMPU-001'",
-              [!!cfg.night_lamp1_stay_on, !!cfg.night_lamp2_stay_on, !!cfg.night_lamp3_stay_on, !!cfg.night_lamp4_stay_on]
+            const l1 = !!cfg.night_lamp1_stay_on;
+            const l2 = !!cfg.night_lamp2_stay_on;
+            const l3 = !!cfg.night_lamp3_stay_on;
+            const l4 = !!cfg.night_lamp4_stay_on;
+            const lRes = await pool.query(
+              "UPDATE public.lamps SET lamp1_on = $1, lamp2_on = $2, lamp3_on = $3, lamp4_on = $4, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'LAMPU-001' RETURNING *",
+              [l1, l2, l3, l4]
             );
+            lampUpdateData = lRes.rows[0];
+            console.log(`🌙 [RFID] Mode Malam Aktif: Pintu Dikunci -> L1=${l1}, L2=${l2}, L3=${l3}, L4=${l4}`);
           } else {
-            await pool.query(
-              "UPDATE public.lamps SET lamp1_on = false, lamp2_on = false, lamp3_on = false, lamp4_on = false, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'LAMPU-001'"
+            const lRes = await pool.query(
+              "UPDATE public.lamps SET lamp1_on = false, lamp2_on = false, lamp3_on = false, lamp4_on = false, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'LAMPU-001' RETURNING *"
             );
+            lampUpdateData = lRes.rows[0];
+            console.log('🔒 [RFID] Mode Siang: Pintu Dikunci -> Semua Lampu OFF');
           }
+        } else {
+          // PINTU DIBUKA -> Nyalakan SEMUA Lampu
+          const lRes = await pool.query(
+            "UPDATE public.lamps SET lamp1_on = true, lamp2_on = true, lamp3_on = true, lamp4_on = true, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'LAMPU-001' RETURNING *"
+          );
+          lampUpdateData = lRes.rows[0];
+          console.log('🔓 [RFID] Pintu Dibuka -> Semua Lampu ON');
         }
 
-        // 4. Broadcast update ke Web App agar UI langsung sync secara real-time
+        // 4. Broadcast update ke Web App & ESP Lampu agar UI dan Relay langsung sync seketika!
         broadcastWS({
           type: 'DOOR_STATE_UPDATE',
           device_id: 'DOOR-001',
@@ -70,6 +87,14 @@ wss.on('connection', (ws) => {
           card_uid: card_uid,
           method: 'RFID'
         });
+
+        if (lampUpdateData) {
+          broadcastWS({
+            type: 'LAMP_STATE_UPDATE',
+            device_id: 'LAMPU-001',
+            data: lampUpdateData
+          });
+        }
 
         console.log(`✅ [WS-LOG] Scan RFID ${card_uid} (is_locked: ${targetLocked}) berhasil disimpan ke database!`);
       }
@@ -457,11 +482,11 @@ app.post('/api/doors/toggle', async (req, res) => {
       [command]
     );
 
-    // 2. OTOMATISASI: Jika PINTU DIKUNCI (targetLocked == true)
+    // 2. OTOMATISASI: Pintu <-> Lampu (Mode Malam & Buka Pintu)
+    let lampUpdateData = null;
     if (targetLocked) {
-      // Read Night Mode config directly from database for accurate custom lamp states
+      // PINTU DIKUNCI -> Terapkan Mode Malam
       const lampCfgRes = await pool.query("SELECT night_mode_enabled, night_lamp1_stay_on, night_lamp2_stay_on, night_lamp3_stay_on, night_lamp4_stay_on FROM public.lamps WHERE device_id = 'LAMPU-001' LIMIT 1");
-      
       const isNightEnabled = lampCfgRes.rows.length > 0 ? lampCfgRes.rows[0].night_mode_enabled : night_mode;
       
       if (isNightEnabled) {
@@ -471,18 +496,27 @@ app.post('/api/doors/toggle', async (req, res) => {
         const l3 = cfg ? !!cfg.night_lamp3_stay_on : stay_on_lamps.includes('lamp3_on');
         const l4 = cfg ? !!cfg.night_lamp4_stay_on : stay_on_lamps.includes('lamp4_on');
 
-        await pool.query(
-          "UPDATE public.lamps SET lamp1_on = $1, lamp2_on = $2, lamp3_on = $3, lamp4_on = $4, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'LAMPU-001'",
+        const lRes = await pool.query(
+          "UPDATE public.lamps SET lamp1_on = $1, lamp2_on = $2, lamp3_on = $3, lamp4_on = $4, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'LAMPU-001' RETURNING *",
           [l1, l2, l3, l4]
         );
+        lampUpdateData = lRes.rows[0];
         console.log(`🌙 Custom Mode Malam: Pintu Dikunci -> Lampu ON: L1=${l1}, L2=${l2}, L3=${l3}, L4=${l4}`);
       } else {
         // MODE SIANG: Semua Lampu OFF (false)
-        await pool.query(
-          "UPDATE public.lamps SET lamp1_on = false, lamp2_on = false, lamp3_on = false, lamp4_on = false, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'LAMPU-001'"
+        const lRes = await pool.query(
+          "UPDATE public.lamps SET lamp1_on = false, lamp2_on = false, lamp3_on = false, lamp4_on = false, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'LAMPU-001' RETURNING *"
         );
+        lampUpdateData = lRes.rows[0];
         console.log('🔒 Mode Siang: Pintu Dikunci -> Semua Lampu OFF');
       }
+    } else {
+      // PINTU DIBUKA -> Nyalakan SEMUA Lampu
+      const lRes = await pool.query(
+        "UPDATE public.lamps SET lamp1_on = true, lamp2_on = true, lamp3_on = true, lamp4_on = true, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'LAMPU-001' RETURNING *"
+      );
+      lampUpdateData = lRes.rows[0];
+      console.log('🔓 Mode Terbuka: Pintu Dibuka -> Semua Lampu ON');
     }
 
     // 3. Add log entry
@@ -498,6 +532,14 @@ app.post('/api/doors/toggle', async (req, res) => {
       is_locked: targetLocked,
       command: command
     });
+
+    if (lampUpdateData) {
+      broadcastWS({
+        type: 'LAMP_STATE_UPDATE',
+        device_id: 'LAMPU-001',
+        data: lampUpdateData
+      });
+    }
 
     res.json({ success: true, data: updateRes.rows[0] });
   } catch (err) {
