@@ -91,7 +91,20 @@ export default function Akun() {
   };
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh' }}>
+    <div style={{ position: 'relative', minHeight: '100vh', maxWidth: 1200, margin: '0 auto' }}>
+      <style>{`
+        .akun-grid-layout {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1.5rem;
+        }
+        @media (min-width: 900px) {
+          .akun-grid-layout {
+            grid-template-columns: 1fr 1fr;
+            align-items: start;
+          }
+        }
+      `}</style>
       <div className="p-6 pt-10" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div className="flex-center mb-4 inset-box-circle" style={{ width: 88, height: 88, color: 'var(--accent-orange)' }}>
           <User size={48} weight="fill" />
@@ -102,64 +115,70 @@ export default function Akun() {
       </div>
 
       <div className="p-6 pt-0">
-        <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem' }}>INFORMASI AKUN</h3>
-        <div className="card mb-6" style={{ padding: '0.5rem 1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.25rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-            <span className="text-sub">RFID UID</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-primary)' }}>
-              <span style={{ fontSize: '0.85rem', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rfidUid}</span>
-              <button onClick={copyUid} className="inset-box flex-center" style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer' }}>
-                <Copy size={16} className="text-sub" />
-              </button>
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.25rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-            <span className="text-sub">Nama</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
-              <span>{userName}</span>
+        <div className="akun-grid-layout">
+          <div>
+            <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem' }}>INFORMASI AKUN</h3>
+            <div className="card mb-6" style={{ padding: '0.5rem 1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.25rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                <span className="text-sub">RFID UID</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-primary)' }}>
+                  <span style={{ fontSize: '0.85rem', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rfidUid}</span>
+                  <button onClick={copyUid} className="inset-box flex-center" style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                    <Copy size={16} className="text-sub" />
+                  </button>
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.25rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                <span className="text-sub">Nama</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+                  <span>{userName}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.25rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                <span className="text-sub">Email</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+                  <span>{userEmail}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.25rem 0' }}>
+                <span className="text-sub">Password</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+                  <span>••••••••</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.25rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-            <span className="text-sub">Email</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
-              <span>{userEmail}</span>
-            </div>
-          </div>
+          <div>
+            <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem' }}>PENGATURAN</h3>
+            <div className="card mb-8" style={{ padding: '0.5rem 1.25rem' }}>
+              <div onClick={() => setShowNameModal(true)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div className="flex-center inset-box-circle" style={{ width: 36, height: 36 }}><User size={18} className="text-orange" /></div>
+                  <span className="font-semibold">Ubah Nama</span>
+                </div>
+                <CaretRight size={16} className="text-sub" />
+              </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.25rem 0' }}>
-            <span className="text-sub">Password</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
-              <span>••••••••</span>
-            </div>
-          </div>
-        </div>
+              <div onClick={() => setShowPassModal(true)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div className="flex-center inset-box-circle" style={{ width: 36, height: 36 }}><Lock size={18} className="text-orange" /></div>
+                  <span className="font-semibold">Ubah Password</span>
+                </div>
+                <CaretRight size={16} className="text-sub" />
+              </div>
 
-        <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '1rem' }}>PENGATURAN</h3>
-        <div className="card mb-8" style={{ padding: '0.5rem 1.25rem' }}>
-          <div onClick={() => setShowNameModal(true)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)', cursor: 'pointer' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div className="flex-center inset-box-circle" style={{ width: 36, height: 36 }}><User size={18} className="text-orange" /></div>
-              <span className="font-semibold">Ubah Nama</span>
+              <div onClick={() => logout()} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 0', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div className="flex-center inset-box-circle" style={{ width: 36, height: 36 }}><SignOut size={18} className="text-danger" color="var(--danger)" /></div>
+                  <span className="font-semibold" style={{ color: 'var(--danger)' }}>Keluar</span>
+                </div>
+                <CaretRight size={16} className="text-sub" />
+              </div>
             </div>
-            <CaretRight size={16} className="text-sub" />
-          </div>
-
-          <div onClick={() => setShowPassModal(true)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)', cursor: 'pointer' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div className="flex-center inset-box-circle" style={{ width: 36, height: 36 }}><Lock size={18} className="text-orange" /></div>
-              <span className="font-semibold">Ubah Password</span>
-            </div>
-            <CaretRight size={16} className="text-sub" />
-          </div>
-
-          <div onClick={() => logout()} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 0', cursor: 'pointer' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div className="flex-center inset-box-circle" style={{ width: 36, height: 36 }}><SignOut size={18} className="text-danger" color="var(--danger)" /></div>
-              <span className="font-semibold" style={{ color: 'var(--danger)' }}>Keluar</span>
-            </div>
-            <CaretRight size={16} className="text-sub" />
           </div>
         </div>
       </div>

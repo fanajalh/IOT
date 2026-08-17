@@ -312,34 +312,47 @@ export default function Lampu() {
         }
         
         /* --- LAYOUT WRAPPER --- */
+        .detail-backdrop {
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+          background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px);
+          z-index: 9998;
+        }
         .detail-wrapper {
           position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
           background-color: var(--bg-main); color: var(--text-main);
           z-index: 9999; display: flex; flex-direction: column; justify-content: space-between;
           transition: background-color 0.1s ease-out, color 0.3s ease;
         }
+        @media (min-width: 768px) {
+          .detail-wrapper {
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 90vw; max-width: 620px; height: 90vh; max-height: 820px;
+            border-radius: 36px; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden; border: 1px solid var(--glass-border);
+          }
+        }
         .main-content {
           flex: 1; position: relative; display: flex; align-items: center; justify-content: center;
           width: 100%; max-width: 1000px; margin: 0 auto; padding: 0 2rem;
         }
         
-        /* --- MENCEGAH PHANTOM OVERLAP (SUPER PENTING BUAT HP) --- */
+        /* --- MENCEGAH PHANTOM OVERLAP --- */
         .widget-container {
           position: absolute; width: 100%; padding: 0 2rem;
           display: flex; justify-content: space-between; align-items: center;
           top: 50%; transform: translateY(-50%); z-index: 5;
-          pointer-events: none; /* Jangan halangi sentuhan slider di bawahnya */
+          pointer-events: none;
         }
         .widget-item-time, .widget-item-duration {
-          pointer-events: auto; /* Hanya box-nya yang bisa disentuh */
+          pointer-events: auto;
         }
         
         .power-btn-container {
           position: absolute; bottom: 10%; z-index: 10;
-          pointer-events: none; /* Jangan halangi sentuhan slider */
+          pointer-events: none;
         }
         .power-btn-container button {
-          pointer-events: auto; /* Tombolnya tetap bisa disentuh */
+          pointer-events: auto;
         }
         
         @media (max-width: 768px) {
@@ -355,11 +368,9 @@ export default function Lampu() {
           }
           .widget-item-duration .divider { display: none; }
           .widget-item-duration .text-vertical { writing-mode: horizontal-tb !important; transform: none !important; }
-          .main-content { padding: 0 1rem; }
-          .power-btn-container { bottom: 5%; }
         }
       `}</style>
-
+      <div className="detail-backdrop" onClick={() => setSelectedLampId(null)}></div>
       <div className="detail-wrapper" style={dynamicStyles}>
         
         {/* Top Navbar */}

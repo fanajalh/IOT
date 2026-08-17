@@ -91,6 +91,19 @@ export default function Pintu() {
 
   return (
     <div>
+      <style>{`
+        .pintu-grid-layout {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1.5rem;
+        }
+        @media (min-width: 900px) {
+          .pintu-grid-layout {
+            grid-template-columns: 1fr 1.2fr;
+            align-items: start;
+          }
+        }
+      `}</style>
       <div className="topbar">
         <Link to="/home" className="topbar-icon" style={{ color: 'inherit', textDecoration: 'none' }}>
           <ArrowLeft size={24} />
@@ -102,64 +115,68 @@ export default function Pintu() {
       </div>
 
       <div className="p-6 pt-0">
-        
-        {/* Visual Pintu Card */}
-        <div className="card mb-6" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div className="grid-2" style={{ width: '100%', alignItems: 'center' }}>
-            <div className="flex-center inset-box" style={{ height: 160 }}>
-              {!isLocked ? (
-                <DoorOpen size={80} color="#38A169" weight="light" />
-              ) : (
-                <DoorClosed size={80} color="#E53E3E" weight="fill" />
+        <div className="pintu-grid-layout">
+          
+          {/* Left Column: Visual Pintu Card */}
+          <div>
+            <div className="card mb-6" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div className="grid-2" style={{ width: '100%', alignItems: 'center' }}>
+                <div className="flex-center inset-box" style={{ height: 160 }}>
+                  {!isLocked ? (
+                    <DoorOpen size={80} color="#38A169" weight="light" />
+                  ) : (
+                    <DoorClosed size={80} color="#E53E3E" weight="fill" />
+                  )}
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                    STATUS PINTU
+                  </h3>
+                  <div className="heading-lg mb-2" style={{ color: !isLocked ? '#38A169' : '#E53E3E' }}>
+                    {!isLocked ? 'TERBUKA' : 'TERKUNCI'}
+                  </div>
+                  <div className="badge-normal">{!isLocked ? 'Akses Terbuka' : 'Solenoid Terkunci'}</div>
+                </div>
+              </div>
+
+              <div className="grid-2 mt-6" style={{ width: '100%', gap: '1rem' }}>
+                <button 
+                  className={`btn-primary ${!isLocked ? 'active' : ''}`}
+                  onClick={() => toggleDoor(false)}
+                  disabled={isLoading}
+                  style={{ opacity: !isLocked ? 0.8 : 1, padding: '0.85rem 0.5rem', fontSize: '0.95rem' }}
+                >
+                  <LockKeyOpen size={20} weight="fill" />
+                  Buka Pintu
+                </button>
+                <button 
+                  className={`btn-secondary ${isLocked ? 'active' : ''}`}
+                  onClick={() => toggleDoor(true)}
+                  disabled={isLoading}
+                  style={{ opacity: isLocked ? 0.8 : 1, padding: '0.85rem 0.5rem', fontSize: '0.95rem' }}
+                >
+                  <LockKey size={20} weight="fill" color={isLocked ? 'var(--accent-orange)' : 'var(--text-primary)'} />
+                  <span style={{ color: isLocked ? 'var(--accent-orange)' : 'var(--text-primary)' }}>Kunci Pintu</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Log Pintu */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                <ClockCounterClockwise size={18} weight="bold" />
+                LOG AKSES PINTU
+              </h3>
+              {logs.length > 0 && (
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#38A169', background: 'rgba(56,161,105,0.12)', padding: '3px 10px', borderRadius: '12px' }}>
+                  LIVE • {logs.length} entri
+                </span>
               )}
             </div>
-            <div>
-              <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                STATUS PINTU
-              </h3>
-              <div className="heading-lg mb-2" style={{ color: !isLocked ? '#38A169' : '#E53E3E' }}>
-                {!isLocked ? 'TERBUKA' : 'TERKUNCI'}
-              </div>
-              <div className="badge-normal">{!isLocked ? 'Akses Terbuka' : 'Solenoid Terkunci'}</div>
-            </div>
-          </div>
 
-          <div className="grid-2 mt-6" style={{ width: '100%', gap: '1rem' }}>
-            <button 
-              className={`btn-primary ${!isLocked ? 'active' : ''}`}
-              onClick={() => toggleDoor(false)}
-              disabled={isLoading}
-              style={{ opacity: !isLocked ? 0.8 : 1, padding: '0.85rem 0.5rem', fontSize: '0.95rem' }}
-            >
-              <LockKeyOpen size={20} weight="fill" />
-              Buka Pintu
-            </button>
-            <button 
-              className={`btn-secondary ${isLocked ? 'active' : ''}`}
-              onClick={() => toggleDoor(true)}
-              disabled={isLoading}
-              style={{ opacity: isLocked ? 0.8 : 1, padding: '0.85rem 0.5rem', fontSize: '0.95rem' }}
-            >
-              <LockKey size={20} weight="fill" color={isLocked ? 'var(--accent-orange)' : 'var(--text-primary)'} />
-              <span style={{ color: isLocked ? 'var(--accent-orange)' : 'var(--text-primary)' }}>Kunci Pintu</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Log Pintu */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-          <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-            <ClockCounterClockwise size={18} weight="bold" />
-            LOG AKSES PINTU
-          </h3>
-          {logs.length > 0 && (
-            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#38A169', background: 'rgba(56,161,105,0.12)', padding: '3px 10px', borderRadius: '12px' }}>
-              LIVE • {logs.length} entri
-            </span>
-          )}
-        </div>
-
-        <div className="card" style={{ padding: '0.5rem 1rem' }}>
+            <div className="card" style={{ padding: '0.5rem 1rem' }}>
           {logs.map((log, index) => {
             const methodInfo = getMethodInfo(log.method);
             return (
@@ -218,8 +235,9 @@ export default function Pintu() {
             </div>
           )}
         </div>
-
       </div>
     </div>
+  </div>
+</div>
   );
 }

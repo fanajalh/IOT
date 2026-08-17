@@ -170,6 +170,8 @@ export default function Notifikasi() {
           min-height: 100vh;
           background: #f0f2f5;
           color: #2D3748;
+          max-width: 1200px;
+          margin: 0 auto;
         }
         .notif-header {
           display: flex;

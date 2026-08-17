@@ -74,6 +74,8 @@ export default function Home() {
           min-height: 100vh;
           background: #f0f2f5;
           color: #2D3748;
+          max-width: 1200px;
+          margin: 0 auto;
         }
         .home-status-grid {
           display: grid;
@@ -108,10 +110,14 @@ export default function Home() {
           .home-ctrl-btn { padding: 0.6rem; font-size: 0.75rem; gap: 4px; }
         }
         @media (min-width: 768px) {
-          .home-wrapper { padding: 2.5rem; }
+          .home-wrapper { padding: 2rem 1rem; }
           .home-status-grid { gap: 1.5rem; }
           .home-shortcut-grid { gap: 1.5rem; margin-bottom: 2.5rem; }
           .home-analytics-grid { gap: 1.5rem; margin-bottom: 2.5rem; }
+          .home-ctrl-btn { padding: 0.75rem 1rem; font-size: 0.85rem; gap: 6px; }
+        }
+        @media (min-width: 1024px) {
+          .home-shortcut-grid { grid-template-columns: 1fr 1fr; }
         }
       `}</style>
       <div className="home-wrapper">
