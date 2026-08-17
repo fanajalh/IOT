@@ -15,7 +15,7 @@ app.use(express.json());
 // ============================================================
 // NEON POSTGRESQL POOL
 // ============================================================
-const NEON_DB_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_CEXLkHA6JqZ8@ep-green-union-atj7ayb6-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const NEON_DB_URL = process.env.DATABASE_URL || 'postgresql://admin_iot:faNajalh_459@13.212.247.120:5432/iot_sensor_db?schema=public';
 
 const pool = new Pool({
   connectionString: NEON_DB_URL,
