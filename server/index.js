@@ -73,6 +73,28 @@ wss.on('connection', (ws) => {
 
         console.log(`✅ [WS-LOG] Scan RFID ${card_uid} (is_locked: ${targetLocked}) berhasil disimpan ke database!`);
       }
+
+      if (data.type === 'LAMP_TOGGLE') {
+        const { lampKey, status } = data;
+        const validKeys = ['lamp1_on', 'lamp2_on', 'lamp3_on', 'lamp4_on'];
+        if (validKeys.includes(lampKey)) {
+          const query = `
+            UPDATE public.lamps
+            SET ${lampKey} = $1, updated_at = CURRENT_TIMESTAMP
+            WHERE device_id = 'LAMPU-001'
+            RETURNING *;
+          `;
+          const { rows } = await pool.query(query, [status]);
+          broadcastWS({
+            type: 'LAMP_STATE_UPDATE',
+            device_id: 'LAMPU-001',
+            lampKey: lampKey,
+            status: status,
+            data: rows[0]
+          });
+          console.log(`✅ [WS-LOG] Tombol Fisik Lampu ${lampKey} = ${status} berhasil disimpan ke database!`);
+        }
+      }
     } catch (e) {
       console.error('⚠️ WS Message Error:', e.message);
     }
@@ -274,6 +296,16 @@ app.post('/api/lamps/toggle', async (req, res) => {
       RETURNING *;
     `;
     const { rows } = await pool.query(query, [status]);
+
+    // ⚡ BROADCAST WEBSOCKET INSTAN KE ESP LAMPU & WEB APP
+    broadcastWS({
+      type: 'LAMP_COMMAND',
+      device_id: 'LAMPU-001',
+      lampKey: lampKey,
+      status: status,
+      data: rows[0]
+    });
+
     res.json({ success: true, data: rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -290,6 +322,14 @@ app.post('/api/lamps/off-all', async (req, res) => {
       RETURNING *;
     `;
     const { rows } = await pool.query(query);
+
+    // ⚡ BROADCAST WEBSOCKET INSTAN KE ESP LAMPU & WEB APP
+    broadcastWS({
+      type: 'LAMP_OFF_ALL',
+      device_id: 'LAMPU-001',
+      data: rows[0]
+    });
+
     res.json({ success: true, data: rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -315,6 +355,16 @@ app.post('/api/lamps/brightness', async (req, res) => {
       RETURNING *;
     `;
     const { rows } = await pool.query(query, [bVal]);
+
+    // ⚡ BROADCAST WEBSOCKET BRIGHTNESS UPDATE
+    broadcastWS({
+      type: 'LAMP_BRIGHTNESS',
+      device_id: 'LAMPU-001',
+      lampKey: colName,
+      brightness: bVal,
+      data: rows[0]
+    });
+
     res.json({ success: true, data: rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
