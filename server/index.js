@@ -529,8 +529,14 @@ app.get('/api/test', (req, res) => {
 // START SERVER
 // ============================================================
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`\n🚀 Server Express berjalan di http://localhost:${PORT}`);
-  console.log(`📋 Test API: http://localhost:${PORT}/api/test`);
-});
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`\n🚀 Server Express berjalan di http://localhost:${PORT}`);
+    console.log(`📋 Test API: http://localhost:${PORT}/api/test`);
+  });
+}
+
+export default app;
+
 

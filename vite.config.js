@@ -6,5 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     allowedHosts: true, // Mengizinkan akses dari semua host, termasuk URL ngrok
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      }
+    }
   }
 })
