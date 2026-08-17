@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../lib/apiClient';
+import { useRealtime } from '../context/RealtimeContext';
 import { ArrowLeft, Bell, BellRinging, CheckCircle, Trash, Door, Lightbulb, ShieldCheck, CreditCard, Globe, SlidersHorizontal, Check } from '@phosphor-icons/react';
 
 const READ_NOTIFS_KEY = 'smart_home_read_notifications';
@@ -22,9 +23,19 @@ const saveStoredIds = (key, ids) => {
 };
 
 export default function Notifikasi() {
+  const { lastMessage } = useRealtime();
   const [filter, setFilter] = useState('semua'); // 'semua', 'pintu', 'lampu', 'sistem'
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // ⚡ SINKRONISASI REAL-TIME WEBSOCKET (DATA MASUK INSTAN TANPA REFRESH)
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    if (lastMessage.type === 'DOOR_COMMAND' || lastMessage.type === 'DOOR_STATE_UPDATE') {
+      fetchNotificationData();
+    }
+  }, [lastMessage]);
 
   useEffect(() => {
     fetchNotificationData();

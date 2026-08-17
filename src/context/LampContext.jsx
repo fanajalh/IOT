@@ -1,14 +1,16 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { apiClient } from '../lib/apiClient';
+import { useRealtime } from './RealtimeContext';
 
 const LampContext = createContext();
 
 export function LampProvider({ children }) {
+  const { lastMessage } = useRealtime();
   const [lamps, setLamps] = useState([
-    { id: 1, key: 'lamp1_on', name: 'Lampu 1 (Ruang Tamu)', status: false },
-    { id: 2, key: 'lamp2_on', name: 'Lampu 2 (Kamar Utama)', status: false },
-    { id: 3, key: 'lamp3_on', name: 'Lampu 3 (Dapur)', status: false },
-    { id: 4, key: 'lamp4_on', name: 'Lampu 4 (Teras)', status: false },
+    { id: 1, key: 'lamp1_on', name: 'Lampu 1 (Ruang Tamu)', status: false, brightness: 100 },
+    { id: 2, key: 'lamp2_on', name: 'Lampu 2 (Kamar Utama)', status: false, brightness: 100 },
+    { id: 3, key: 'lamp3_on', name: 'Lampu 3 (Dapur)', status: false, brightness: 100 },
+    { id: 4, key: 'lamp4_on', name: 'Lampu 4 (Teras)', status: false, brightness: 100 },
   ]);
   const [localCounters, setLocalCounters] = useState({});
   const lampsRef = useRef([]);
@@ -17,13 +19,49 @@ export function LampProvider({ children }) {
     lampsRef.current = lamps;
   }, [lamps]);
 
+  // ⚡ SINKRONISASI REAL-TIME WEBSOCKET (TANPA REFRESH)
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    if (lastMessage.type === 'LAMP_COMMAND' || lastMessage.type === 'LAMP_STATE_UPDATE') {
+      const { lampKey, status, data } = lastMessage;
+      setLamps(prev => prev.map(l => {
+        if (l.key === lampKey) {
+          return { ...l, status: !!status };
+        }
+        return l;
+      }));
+      if (data) {
+        setLamps(prev => prev.map(l => ({
+          ...l,
+          status: !!data[l.key],
+          brightness: data[l.key.replace('_on', '_brightness')] ?? l.brightness ?? 100
+        })));
+      }
+    } else if (lastMessage.type === 'LAMP_OFF_ALL') {
+      setLamps(prev => prev.map(l => ({ ...l, status: false })));
+    } else if (lastMessage.type === 'LAMP_BRIGHTNESS') {
+      const { lampKey, brightness } = lastMessage;
+      const bKey = lampKey.endsWith('_brightness') ? lampKey : lampKey.replace('_on', '_brightness');
+      const targetLampKey = bKey.replace('_brightness', '_on');
+      setLamps(prev => prev.map(l => {
+        if (l.key === targetLampKey) {
+          return { ...l, brightness: brightness, status: brightness > 0 };
+        }
+        return l;
+      }));
+    } else if (lastMessage.type === 'DOOR_COMMAND' || lastMessage.type === 'DOOR_STATE_UPDATE') {
+      fetchLamps();
+    }
+  }, [lastMessage]);
+
   useEffect(() => {
     fetchLamps();
 
-    // Auto sync with server every 2 seconds
+    // Auto sync cadangan dengan server tiap 5 detik
     const pollInterval = setInterval(() => {
       fetchLamps();
-    }, 2000);
+    }, 5000);
 
     // Global ticker for lamp active durations
     const ticker = setInterval(() => {

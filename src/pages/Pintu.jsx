@@ -1,24 +1,39 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '../lib/apiClient';
 import { useLamps } from '../context/LampContext';
+import { useRealtime } from '../context/RealtimeContext';
 import { ArrowLeft, DotsThreeVertical, LockKeyOpen, LockKey, DoorOpen, Door as DoorClosed, CreditCard, Globe, ClockCounterClockwise } from '@phosphor-icons/react';
 import { Link } from 'react-router-dom';
 
 export default function Pintu() {
+  const { lastMessage } = useRealtime();
   const [isLocked, setIsLocked] = useState(true);
   const [deviceId, setDeviceId] = useState('DOOR-001');
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const { isNightMode, nightStayOnLamps } = useLamps();
 
+  // ⚡ SINKRONISASI REAL-TIME WEBSOCKET (SEKETIKA <5ms TANPA REFRESH)
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    if (lastMessage.type === 'DOOR_COMMAND' || lastMessage.type === 'DOOR_STATE_UPDATE') {
+      if (typeof lastMessage.is_locked === 'boolean') {
+        setIsLocked(lastMessage.is_locked);
+      }
+      fetchLogs();
+    }
+  }, [lastMessage]);
+
   useEffect(() => {
     fetchDoorStatus();
     fetchLogs();
 
+    // Auto sync cadangan tiap 5 detik
     const interval = setInterval(() => {
       fetchDoorStatus();
       fetchLogs();
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);

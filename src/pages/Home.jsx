@@ -1,16 +1,29 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLamps } from '../context/LampContext';
+import { useRealtime } from '../context/RealtimeContext';
 import { apiClient } from '../lib/apiClient';
 import { Link } from 'react-router-dom';
 import { List, Bell, Door, Lightbulb, TrendUp, Clock, LockOpen, Lock, Power } from '@phosphor-icons/react';
 
 export default function Home() {
   const { user } = useAuth();
+  const { lastMessage } = useRealtime();
   const { lamps, localCounters, formatDuration, cascadeTurnOnAll, cascadeTurnOffAll } = useLamps();
   const [userName, setUserName] = useState('');
   const [doorStatus, setDoorStatus] = useState('Memuat...');
   const [deviceId, setDeviceId] = useState('DOOR-001');
+
+  // ⚡ SINKRONISASI REAL-TIME WEBSOCKET (TANPA REFRESH)
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    if (lastMessage.type === 'DOOR_COMMAND' || lastMessage.type === 'DOOR_STATE_UPDATE') {
+      if (typeof lastMessage.is_locked === 'boolean') {
+        setDoorStatus(lastMessage.is_locked ? 'TERKUNCI' : 'TERBUKA');
+      }
+    }
+  }, [lastMessage]);
 
   const activeLampsCount = lamps.filter(l => l.status).length;
   const totalLampsCount = lamps.length || 0;
@@ -31,9 +44,10 @@ export default function Home() {
     fetchUserProfile();
     fetchDoor();
 
+    // Auto sync cadangan tiap 5 detik
     const interval = setInterval(() => {
       fetchDoor();
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [user]);
