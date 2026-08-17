@@ -25,10 +25,57 @@ wss.on('connection', (ws) => {
   wsClients.add(ws);
   console.log(`⚡ Client WebSocket Terhubung! Total: ${wsClients.size}`);
 
-  ws.on('message', (msg) => {
+  ws.on('message', async (msg) => {
     try {
-      console.log('📩 Pesan WS diterima:', msg.toString());
-    } catch (e) {}
+      const data = JSON.parse(msg.toString());
+      console.log('📩 Pesan WS diterima:', data);
+
+      if (data.type === 'RFID_SCAN') {
+        const { card_uid, is_locked } = data;
+        const targetLocked = !!is_locked;
+
+        // 1. Update status pintu di public.doors
+        await pool.query(
+          "UPDATE public.doors SET is_locked = $1, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'DOOR-001'",
+          [targetLocked]
+        );
+
+        // 2. Simpan riwayat scan kartu ke public.access_logs
+        await pool.query(
+          "INSERT INTO public.access_logs (device_id, card_uid, status, method) VALUES ('DOOR-001', $1, 'GRANTED', 'RFID')",
+          [card_uid || 'UNKNOWN']
+        );
+
+        // 3. Otomatisasi mode malam lampu jika pintu dikunci
+        if (targetLocked) {
+          const lampCfgRes = await pool.query("SELECT night_mode_enabled, night_lamp1_stay_on, night_lamp2_stay_on, night_lamp3_stay_on, night_lamp4_stay_on FROM public.lamps WHERE device_id = 'LAMPU-001' LIMIT 1");
+          if (lampCfgRes.rows.length > 0 && lampCfgRes.rows[0].night_mode_enabled) {
+            const cfg = lampCfgRes.rows[0];
+            await pool.query(
+              "UPDATE public.lamps SET lamp1_on = $1, lamp2_on = $2, lamp3_on = $3, lamp4_on = $4, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'LAMPU-001'",
+              [!!cfg.night_lamp1_stay_on, !!cfg.night_lamp2_stay_on, !!cfg.night_lamp3_stay_on, !!cfg.night_lamp4_stay_on]
+            );
+          } else {
+            await pool.query(
+              "UPDATE public.lamps SET lamp1_on = false, lamp2_on = false, lamp3_on = false, lamp4_on = false, updated_at = CURRENT_TIMESTAMP WHERE device_id = 'LAMPU-001'"
+            );
+          }
+        }
+
+        // 4. Broadcast update ke Web App agar UI langsung sync secara real-time
+        broadcastWS({
+          type: 'DOOR_STATE_UPDATE',
+          device_id: 'DOOR-001',
+          is_locked: targetLocked,
+          card_uid: card_uid,
+          method: 'RFID'
+        });
+
+        console.log(`✅ [WS-LOG] Scan RFID ${card_uid} (is_locked: ${targetLocked}) berhasil disimpan ke database!`);
+      }
+    } catch (e) {
+      console.error('⚠️ WS Message Error:', e.message);
+    }
   });
 
   ws.on('close', () => {
