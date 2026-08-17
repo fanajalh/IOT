@@ -4,6 +4,8 @@ import nodemailer from 'nodemailer';
 import pg from 'pg';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
+import http from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
 
 dotenv.config();
 
@@ -11,6 +13,38 @@ const { Pool } = pg;
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// ============================================================
+// WEBSOCKET SERVER UNTUK KONTROL REAL-TIME INSTAN (0.01s)
+// ============================================================
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
+const wsClients = new Set();
+
+wss.on('connection', (ws) => {
+  wsClients.add(ws);
+  console.log(`⚡ Client WebSocket Terhubung! Total: ${wsClients.size}`);
+
+  ws.on('message', (msg) => {
+    try {
+      console.log('📩 Pesan WS diterima:', msg.toString());
+    } catch (e) {}
+  });
+
+  ws.on('close', () => {
+    wsClients.delete(ws);
+    console.log(`🔌 Client WebSocket Terputus! Total: ${wsClients.size}`);
+  });
+});
+
+function broadcastWS(data) {
+  const payload = JSON.stringify(data);
+  wsClients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
+    }
+  });
+}
 
 // ============================================================
 // NEON POSTGRESQL POOL
@@ -360,6 +394,14 @@ app.post('/api/doors/toggle', async (req, res) => {
       [card_uid, method]
     );
 
+    // ⚡ BROADCAST REALTIME WEBSOCKET (INSTAN <0.01s SEKETIKA)
+    broadcastWS({
+      type: 'DOOR_COMMAND',
+      device_id: 'DOOR-001',
+      is_locked: targetLocked,
+      command: command
+    });
+
     res.json({ success: true, data: updateRes.rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -531,9 +573,10 @@ app.get('/api/test', (req, res) => {
 const PORT = process.env.PORT || 3001;
 
 if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`\n🚀 Server Express berjalan di http://localhost:${PORT}`);
+  server.listen(PORT, () => {
+    console.log(`\n🚀 Server Express & WebSocket berjalan di http://localhost:${PORT}`);
     console.log(`📋 Test API: http://localhost:${PORT}/api/test`);
+    console.log(`⚡ WebSocket Server SIAP di ws://localhost:${PORT}`);
   });
 }
 
